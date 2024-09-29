@@ -22,8 +22,7 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
   final TextEditingController electricityController = TextEditingController();
 
   String? selectedPlantType;
-  final String userId =
-      FirebaseAuth.instance.currentUser!.uid; // Get current user ID
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
@@ -32,14 +31,12 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
   }
 
   Future<void> _loadFarmData() async {
-    // Fetch the farm data if it exists
     DocumentSnapshot farmDoc =
         await FirebaseFirestore.instance.collection('farms').doc(userId).get();
 
     if (farmDoc.exists) {
       var farmData = farmDoc.data() as Map<String, dynamic>;
 
-      // Pre-populate fields if farm data exists
       setState(() {
         landSizeController.text = farmData['landSize'] ?? '';
         plugsController.text = farmData['plugs']?.toString() ?? '';
@@ -59,7 +56,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
       body: ListView(
         padding: EdgeInsets.all(16),
         children: [
-          SizedBox(height: 15),
           Row(
             children: [
               Container(
@@ -75,8 +71,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ],
           ),
           SizedBox(height: 40),
-
-          // Editable Land Size
           TextField(
             controller: landSizeController,
             cursorColor: AppColors.mainColor,
@@ -87,8 +81,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 10),
-
-          // Editable Plugs
           TextField(
             controller: plugsController,
             keyboardType: TextInputType.number,
@@ -99,8 +91,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 10),
-
-          // Editable Plant Type
           DropdownButtonFormField<String>(
             value: selectedPlantType,
             items: [
@@ -123,15 +113,9 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 10),
-
-          // Inventory Section
-          Text(
-            "Inventory",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text("Inventory",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           SizedBox(height: 10),
-
-          // Editable Inventory: Seeds
           TextField(
             controller: seedsController,
             decoration: InputDecoration(
@@ -141,8 +125,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 10),
-
-          // Editable Inventory: Fertilizers
           TextField(
             controller: fertilizersController,
             decoration: InputDecoration(
@@ -152,8 +134,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 10),
-
-          // Editable Inventory: Pesticides
           TextField(
             controller: pesticidesController,
             decoration: InputDecoration(
@@ -163,8 +143,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 10),
-
-          // Editable Inventory: Water
           TextField(
             controller: waterController,
             decoration: InputDecoration(
@@ -174,8 +152,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 10),
-
-          // Editable Inventory: Electricity
           TextField(
             controller: electricityController,
             decoration: InputDecoration(
@@ -185,8 +161,6 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ),
           ),
           SizedBox(height: 20),
-
-          // Save Button
           CustomButton(
             buttonText: 'Save Farm Data',
             textColor: Colors.white,
@@ -200,31 +174,34 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
     );
   }
 
-  void saveFarmData() async {
+  Future<void> saveFarmData() async {
     try {
-      // Save or update the farm data in Firestore
+      // Save the farm data in Firestore
       await FirebaseFirestore.instance.collection('farms').doc(userId).set(
-          {
-            'landSize': landSizeController.text,
-            'plugs': int.parse(plugsController.text),
-            'plantType': selectedPlantType,
-            'inventory': {
-              'seeds': seedsController.text,
-              'fertilizers': fertilizersController.text,
-              'pesticides': pesticidesController.text,
-              'water': waterController.text,
-              'electricity': electricityController.text,
-            },
+        {
+          'landSize': landSizeController.text,
+          'plugs': List.generate(
+              int.parse(plugsController.text), (index) => 'Plug ${index + 1}'),
+          'plantType': selectedPlantType,
+          'inventory': {
+            'seeds': seedsController.text,
+            'fertilizers': fertilizersController.text,
+            'pesticides': pesticidesController.text,
+            'water': waterController.text,
+            'electricity': electricityController.text,
           },
-          SetOptions(
-              merge: true)); // Use merge to update only the fields provided
+        },
+        SetOptions(merge: true),
+      );
 
+      // Show success message
       Get.snackbar('Success', 'Farm data updated successfully',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white);
       Get.offAllNamed('/home');
     } catch (e) {
+      // Show error message
       Get.snackbar('Error', 'Failed to update farm data',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red,

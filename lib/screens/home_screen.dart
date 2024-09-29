@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:farm_app/screens/export_data_screen.dart';
+import 'package:farm_app/screens/sales_screen.dart';
 import 'package:farm_app/utils/colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -122,6 +124,34 @@ class _HomeScreenState extends State<HomeScreen> {
     return DateFormat.yMMMM().format(now); // Format as "September 2024"
   }
 
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Confirm Logout"),
+          content: Text("Are you sure you want to log out?"),
+          actions: [
+            TextButton(
+              child: Text("Cancel"),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+            TextButton(
+              child: Text("Logout"),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                FirebaseAuth.instance.signOut(); // Log out user
+                Get.offAllNamed('/welcome'); // Redirect to the welcome page
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,12 +189,25 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             ListTile(
+              leading: Icon(Icons.sell),
+              title: Text('Sales'),
+              onTap: () {
+                Get.to(() => SalesScreen()); // Navigate to Sales Page
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.download),
+              title: Text('Export Data'),
+              onTap: () {
+                Get.to(() => ExportDataScreen()); // Navigate to Export Page
+              },
+            ),
+            ListTile(
               leading: Icon(Icons.logout),
               title: Text('Logout'),
               onTap: () {
-                Navigator.pop(context); // Close the drawer
-                FirebaseAuth.instance.signOut(); // Log out user
-                Get.offAllNamed('/welcome');
+                // Show confirmation dialog
+                _showLogoutConfirmationDialog(context);
               },
             ),
           ],
@@ -187,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       size: 20,
                     ),
                     Text(
-                      "Malaysia, Kelantan",
+                      "Malaysia, Alor Setar",
                       style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
@@ -276,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // Monthly Activity Monitor with Edit Button
                 const Text(
                   "Monthly Activity Monitor",
                   style: TextStyle(color: Colors.black, fontSize: 20),
@@ -298,7 +342,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 8),
                         Text(
                             "Land Size: ${monthlyUsage['landSize'] ?? 'N/A'} hectares"),
-                        Text("Plugs: ${monthlyUsage['plugs'] ?? 'N/A'}"),
+                        Text(
+                            "Plugs: ${(monthlyUsage['plugs'] as List<dynamic>?)?.length ?? 'N/A'}"),
                         Text(
                             "Plant Type: ${monthlyUsage['plantType'] ?? 'N/A'}"),
                         const SizedBox(height: 10),
@@ -313,19 +358,32 @@ class _HomeScreenState extends State<HomeScreen> {
                             "Water: ${remainingInventory['water']?.toString() ?? 'N/A'} liters left"),
                         Text(
                             "Electricity: ${monthlyUsage['inventory']?['electricity']?.toString() ?? 'N/A'} kWh"),
+
+                        // Edit button for monthly data
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: () {
+                              _showEditMonthlyDataDialog(
+                                  context); // Open monthly data edit dialog
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+
+// Daily Activity Monitor with Edit Button
                 const Text(
                   "Daily Activity Monitor",
                   style: TextStyle(color: Colors.black, fontSize: 20),
                 ),
-                // Display daily usage summary in cards with dates
                 ...dailyUsageData.entries.map((entry) {
                   String date = entry.key; // Date of the entry
-                  var usage = entry.value;
+                  var updates = (entry.value['updates'] as List<dynamic>? ??
+                      []); // List of updates for the day
 
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
@@ -342,14 +400,41 @@ class _HomeScreenState extends State<HomeScreen> {
                               style:
                                   const TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text(
-                              "Seeds: ${usage['seeds']?.toString() ?? 'N/A'} grams"),
-                          Text(
-                              "Fertilizers: ${usage['fertilizers']?.toString() ?? 'N/A'} liters"),
-                          Text(
-                              "Pesticides: ${usage['pesticides']?.toString() ?? 'N/A'} liters"),
-                          Text(
-                              "Water: ${usage['water']?.toString() ?? 'N/A'} liters"),
+
+                          // Loop through and display each update for this day
+                          ...updates.map((update) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Plug: ${update['plug'] ?? 'N/A'}"),
+                                  Text(
+                                      "Vegetable/Fruit: ${update['vegFruit'] ?? 'N/A'}"),
+                                  Text(
+                                      "Seeds: ${update['seeds']?.toString() ?? 'N/A'} grams"),
+                                  Text(
+                                      "Fertilizers: ${update['fertilizers']?.toString() ?? 'N/A'} liters"),
+                                  Text(
+                                      "Pesticides: ${update['pesticides']?.toString() ?? 'N/A'} liters"),
+                                  Text(
+                                      "Water: ${update['water']?.toString() ?? 'N/A'} liters"),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+
+                          // Edit button for daily data
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: IconButton(
+                              icon: Icon(Icons.edit),
+                              onPressed: () {
+                                _showEditDailyDataDialog(context, date,
+                                    updates); // Open daily data edit dialog
+                              },
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -485,25 +570,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 SvgPicture.asset("assets/images/1.svg"),
                 SizedBox(height: 10),
                 SvgPicture.asset("assets/images/3.svg"),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Remaining Resources:",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text(
-                          "Seeds Left: ${remainingInventory['seeds']?.toString() ?? 'N/A'} kg"),
-                      Text(
-                          "Fertilizers Left: ${remainingInventory['fertilizers']?.toString() ?? 'N/A'} liters"),
-                      Text(
-                          "Pesticides Left: ${remainingInventory['pesticides']?.toString() ?? 'N/A'} liters"),
-                      Text(
-                          "Water Left: ${remainingInventory['water']?.toString() ?? 'N/A'} liters"),
-                    ],
-                  ),
-                ),
+                // Padding(
+                //   padding: const EdgeInsets.all(8.0),
+                //   child: Column(
+                //     crossAxisAlignment: CrossAxisAlignment.start,
+                //     children: [
+                //       const Text("Remaining Resources:",
+                //           style: TextStyle(
+                //               fontSize: 18, fontWeight: FontWeight.bold)),
+                //       Text(
+                //           "Seeds Left: ${remainingInventory['seeds']?.toString() ?? 'N/A'} kg"),
+                //       Text(
+                //           "Fertilizers Left: ${remainingInventory['fertilizers']?.toString() ?? 'N/A'} liters"),
+                //       Text(
+                //           "Pesticides Left: ${remainingInventory['pesticides']?.toString() ?? 'N/A'} liters"),
+                //       Text(
+                //           "Water Left: ${remainingInventory['water']?.toString() ?? 'N/A'} liters"),
+                //     ],
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -525,12 +610,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showDailyUsageForm(BuildContext context) {
+  void _showDailyUsageForm(BuildContext context) async {
+    // Fetch plugs from Firestore
+    DocumentSnapshot farmDoc =
+        await FirebaseFirestore.instance.collection('farms').doc(userId).get();
+    List<String> plugs = (farmDoc['plugs'] as List<dynamic>).cast<String>();
+
     // Controllers for text fields
     final TextEditingController seedsController = TextEditingController();
     final TextEditingController waterController = TextEditingController();
     final TextEditingController fertilizersController = TextEditingController();
     final TextEditingController pesticidesController = TextEditingController();
+    final TextEditingController vegFruitController =
+        TextEditingController(); // For vegetable/fruit name
+    String? selectedPlug;
 
     showDialog(
       context: context,
@@ -540,6 +633,21 @@ class _HomeScreenState extends State<HomeScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Dropdown for selecting the plug
+              DropdownButtonFormField<String>(
+                value: selectedPlug,
+                items: plugs.map((String plug) {
+                  return DropdownMenuItem(value: plug, child: Text(plug));
+                }).toList(),
+                onChanged: (String? newValue) {
+                  selectedPlug = newValue;
+                },
+                decoration: InputDecoration(labelText: 'Select Plug'),
+              ),
+              TextField(
+                controller: vegFruitController,
+                decoration: InputDecoration(labelText: 'Vegetable/Fruit Name'),
+              ),
               TextField(
                 controller: seedsController,
                 keyboardType: TextInputType.number,
@@ -574,6 +682,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 // Validate input and save to Firestore
                 await _saveDailyUsage(
+                  selectedPlug!,
+                  vegFruitController.text,
                   seedsController.text,
                   waterController.text,
                   fertilizersController.text,
@@ -589,6 +699,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _saveDailyUsage(
+    String plug,
+    String vegFruit,
     String seeds,
     String water,
     String fertilizers,
@@ -598,21 +710,47 @@ class _HomeScreenState extends State<HomeScreen> {
     final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     try {
-      // Save the daily usage under the 'daily_usage' field in the user's document
+      // Retrieve existing daily usage data for today, if any
+      DocumentSnapshot farmDoc = await FirebaseFirestore.instance
+          .collection('farms')
+          .doc(userId)
+          .get();
+      List<dynamic> existingUpdates =
+          []; // Default to empty list if no data exists
+
+      if (farmDoc.exists &&
+          (farmDoc.data() as Map<String, dynamic>).containsKey('daily_usage')) {
+        var dailyUsageData = (farmDoc['daily_usage'] as Map<String, dynamic>);
+        if (dailyUsageData.containsKey(today)) {
+          existingUpdates =
+              dailyUsageData[today]['updates'] as List<dynamic>? ??
+                  []; // Ensure it's a list or empty
+        }
+      }
+
+      // Add the new daily update to the existing updates
+      existingUpdates.add({
+        'plug': plug,
+        'vegFruit': vegFruit,
+        'seeds': seeds,
+        'water': water,
+        'fertilizers': fertilizers,
+        'pesticides': pesticides,
+      });
+
+      // Save the updated daily usage data back to Firestore
       await FirebaseFirestore.instance.collection('farms').doc(userId).set(
-          {
-            'daily_usage': {
-              today: {
-                'seeds': seeds,
-                'water': water,
-                'fertilizers': fertilizers,
-                'pesticides': pesticides,
-              },
+        {
+          'daily_usage': {
+            today: {
+              'updates': existingUpdates, // Store the array of updates
             }
-          },
-          SetOptions(
-              merge:
-                  true)); // Merge the data instead of overwriting the entire document
+          }
+        },
+        SetOptions(
+            merge:
+                true), // Merge the data instead of overwriting the entire document
+      );
 
       Get.snackbar('Success', 'Daily usage saved successfully',
           backgroundColor: Colors.green, colorText: Colors.white);
@@ -623,5 +761,215 @@ class _HomeScreenState extends State<HomeScreen> {
       Get.snackbar('Error', 'Failed to save daily usage',
           backgroundColor: Colors.red, colorText: Colors.white);
     }
+  }
+
+  void _showEditMonthlyDataDialog(BuildContext context) {
+    // Controllers to edit monthly data
+    final TextEditingController landSizeController =
+        TextEditingController(text: monthlyUsage['landSize']?.toString() ?? '');
+    final TextEditingController seedsController = TextEditingController(
+        text: remainingInventory['seeds']?.toString() ?? '');
+    final TextEditingController fertilizersController = TextEditingController(
+        text: remainingInventory['fertilizers']?.toString() ?? '');
+    final TextEditingController pesticidesController = TextEditingController(
+        text: remainingInventory['pesticides']?.toString() ?? '');
+    final TextEditingController waterController = TextEditingController(
+        text: remainingInventory['water']?.toString() ?? '');
+    final TextEditingController electricityController = TextEditingController(
+        text: monthlyUsage['inventory']?['electricity']?.toString() ?? '');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Monthly Data'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: landSizeController,
+                decoration: InputDecoration(labelText: 'Land Size (hectares)'),
+              ),
+              TextField(
+                controller: seedsController,
+                decoration: InputDecoration(labelText: 'Seeds (kg)'),
+              ),
+              TextField(
+                controller: fertilizersController,
+                decoration: InputDecoration(labelText: 'Fertilizers (liters)'),
+              ),
+              TextField(
+                controller: pesticidesController,
+                decoration: InputDecoration(labelText: 'Pesticides (liters)'),
+              ),
+              TextField(
+                controller: waterController,
+                decoration: InputDecoration(labelText: 'Water (liters)'),
+              ),
+              TextField(
+                controller: electricityController,
+                decoration: InputDecoration(labelText: 'Electricity (kWh)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Save'),
+              onPressed: () async {
+                // Save the edited data to Firestore
+                await FirebaseFirestore.instance
+                    .collection('farms')
+                    .doc(userId)
+                    .update({
+                  'landSize': landSizeController.text,
+                  'inventory.seeds': seedsController.text,
+                  'inventory.fertilizers': fertilizersController.text,
+                  'inventory.pesticides': pesticidesController.text,
+                  'inventory.water': waterController.text,
+                  'inventory.electricity': electricityController.text,
+                });
+
+                Navigator.of(context).pop(); // Close the dialog
+                _loadFarmData(); // Reload data to refresh the UI
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditDailyDataDialog(
+      BuildContext context, String date, List<dynamic> updates) async {
+    // Fetch the list of available plugs from Firestore
+    DocumentSnapshot farmDoc =
+        await FirebaseFirestore.instance.collection('farms').doc(userId).get();
+    List<String> plugs = (farmDoc['plugs'] as List<dynamic>).cast<String>();
+
+    // Create controllers for each field and populate with existing data
+    final List<TextEditingController> vegFruitControllers = [];
+    final List<String?> selectedPlugList = []; // List for selected plugs
+    final List<TextEditingController> seedControllers = [];
+    final List<TextEditingController> waterControllers = [];
+    final List<TextEditingController> fertilizerControllers = [];
+    final List<TextEditingController> pesticideControllers = [];
+
+    for (var update in updates) {
+      vegFruitControllers.add(
+          TextEditingController(text: update['vegFruit']?.toString() ?? ''));
+      selectedPlugList.add(update['plug']?.toString() ?? null);
+      seedControllers
+          .add(TextEditingController(text: update['seeds']?.toString() ?? ''));
+      waterControllers
+          .add(TextEditingController(text: update['water']?.toString() ?? ''));
+      fertilizerControllers.add(
+          TextEditingController(text: update['fertilizers']?.toString() ?? ''));
+      pesticideControllers.add(
+          TextEditingController(text: update['pesticides']?.toString() ?? ''));
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Daily Data for $date'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(updates.length, (index) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Update ${index + 1}"),
+
+                    // Dropdown to select a plug
+                    DropdownButtonFormField<String>(
+                      value: selectedPlugList[index],
+                      items: plugs.map((String plug) {
+                        return DropdownMenuItem(value: plug, child: Text(plug));
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        selectedPlugList[index] = newValue;
+                      },
+                      decoration: InputDecoration(labelText: 'Select Plug'),
+                    ),
+
+                    // Text field to edit vegetable/fruit name
+                    TextField(
+                      controller: vegFruitControllers[index],
+                      decoration:
+                          InputDecoration(labelText: 'Vegetable/Fruit Name'),
+                    ),
+
+                    TextField(
+                      controller: seedControllers[index],
+                      decoration: InputDecoration(labelText: 'Seeds (grams)'),
+                    ),
+                    TextField(
+                      controller: waterControllers[index],
+                      decoration: InputDecoration(labelText: 'Water (liters)'),
+                    ),
+                    TextField(
+                      controller: fertilizerControllers[index],
+                      decoration:
+                          InputDecoration(labelText: 'Fertilizers (liters)'),
+                    ),
+                    TextField(
+                      controller: pesticideControllers[index],
+                      decoration:
+                          InputDecoration(labelText: 'Pesticides (liters)'),
+                    ),
+                    const Divider(),
+                  ],
+                );
+              }),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Save'),
+              onPressed: () async {
+                // Build the updated list of updates
+                List<Map<String, dynamic>> updatedDailyData = [];
+                for (int i = 0; i < updates.length; i++) {
+                  updatedDailyData.add({
+                    'plug': selectedPlugList[i], // Store the selected plug
+                    'vegFruit': vegFruitControllers[i]
+                        .text, // Store the edited vegetable/fruit name
+                    'seeds': seedControllers[i].text,
+                    'water': waterControllers[i].text,
+                    'fertilizers': fertilizerControllers[i].text,
+                    'pesticides': pesticideControllers[i].text,
+                  });
+                }
+
+                // Update Firestore with the new daily data
+                await FirebaseFirestore.instance
+                    .collection('farms')
+                    .doc(userId)
+                    .update({
+                  'daily_usage.$date.updates': updatedDailyData,
+                });
+
+                Navigator.of(context).pop(); // Close the dialog
+                _loadDailyUsageData(); // Reload data to refresh the UI
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
