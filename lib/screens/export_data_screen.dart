@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:csv/csv.dart';
-import 'dart:html' as html;
+//import 'dart:html' as html;
 
 import '../utils/colors.dart'; // Import html package for web downloads
 
@@ -114,12 +114,12 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
 
     // Create a blob for web download
     final bytes = utf8.encode(csv);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "exported_data.csv")
-      ..click();
-    html.Url.revokeObjectUrl(url); // Revoke the URL to release resources
+    // final blob = html.Blob([bytes]);
+    // final url = html.Url.createObjectUrlFromBlob(blob);
+    // final anchor = html.AnchorElement(href: url)
+    //   ..setAttribute("download", "exported_data.csv")
+    //   ..click();
+    // html.Url.revokeObjectUrl(url); // Revoke the URL to release resources
   }
 
   // Convert data to JSON for Web
@@ -135,12 +135,12 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
 
     // Create a blob for web download
     final bytes = utf8.encode(json);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "exported_data.json")
-      ..click();
-    html.Url.revokeObjectUrl(url); // Revoke the URL to release resources
+    // final blob = html.Blob([bytes]);
+    // final url = html.Url.createObjectUrlFromBlob(blob);
+    // final anchor = html.AnchorElement(href: url)
+    //   ..setAttribute("download", "exported_data.json")
+    //   ..click();
+    // html.Url.revokeObjectUrl(url); // Revoke the URL to release resources
   }
 
   @override

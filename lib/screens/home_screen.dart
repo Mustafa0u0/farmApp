@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:farm_app/screens/export_data_screen.dart';
-import 'package:farm_app/screens/monthly_screen.dart';
+import 'package:farm_app/screens/daily_screen.dart';
 import 'package:farm_app/screens/sales_screen.dart';
 import 'package:farm_app/utils/colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -261,10 +261,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: Icon(Icons.calendar_today),
-              title: Text('Monthly Updates'),
+              title: Text('Daily Updates'),
               onTap: () {
                 Get.to(() =>
-                    MonthlyUpdatesPage()); // Navigate to Monthly Updates Page
+                    DailyUpdatesPage()); // Navigate to Monthly Updates Page
               },
             ),
             ListTile(
@@ -582,45 +582,49 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Enter Daily Usage'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Dropdown for selecting the plug
-              DropdownButtonFormField<String>(
-                value: selectedPlug,
-                items: plugs.map((String plug) {
-                  return DropdownMenuItem(value: plug, child: Text(plug));
-                }).toList(),
-                onChanged: (String? newValue) {
-                  selectedPlug = newValue;
-                },
-                decoration: InputDecoration(labelText: 'Select Plug'),
-              ),
-              TextField(
-                controller: vegFruitController,
-                decoration: InputDecoration(labelText: 'Vegetable/Fruit Name'),
-              ),
-              TextField(
-                controller: seedsController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: 'Seeds (grams)'),
-              ),
-              TextField(
-                controller: waterController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: 'Water (liters)'),
-              ),
-              TextField(
-                controller: fertilizersController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: 'Fertilizers (liters)'),
-              ),
-              TextField(
-                controller: pesticidesController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: 'Pesticides (liters)'),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Dropdown for selecting the plug
+                DropdownButtonFormField<String>(
+                  value: selectedPlug,
+                  items: plugs.map((String plug) {
+                    return DropdownMenuItem(value: plug, child: Text(plug));
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    selectedPlug = newValue;
+                  },
+                  decoration: InputDecoration(labelText: 'Select Plug'),
+                ),
+                TextField(
+                  controller: vegFruitController,
+                  decoration:
+                      InputDecoration(labelText: 'Vegetable/Fruit Name'),
+                ),
+                TextField(
+                  controller: seedsController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: 'Seeds (grams)'),
+                ),
+                TextField(
+                  controller: waterController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: 'Water (liters)'),
+                ),
+                TextField(
+                  controller: fertilizersController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      InputDecoration(labelText: 'Fertilizers (liters)'),
+                ),
+                TextField(
+                  controller: pesticidesController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: 'Pesticides (liters)'),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -737,38 +741,42 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Edit Monthly Data'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: landSizeController,
-                decoration: InputDecoration(labelText: 'Land Size (hectares)'),
-              ),
-              TextField(
-                controller: seedsController,
-                decoration: InputDecoration(labelText: 'Seeds (kg)'),
-              ),
-              TextField(
-                controller: fertilizersController,
-                decoration: InputDecoration(labelText: 'Fertilizers (liters)'),
-              ),
-              TextField(
-                controller: pesticidesController,
-                decoration: InputDecoration(labelText: 'Pesticides (liters)'),
-              ),
-              TextField(
-                controller: waterController,
-                decoration: InputDecoration(labelText: 'Water (liters)'),
-              ),
-              TextField(
-                controller: electricityController,
-                decoration: InputDecoration(labelText: 'Electricity (kWh)'),
-              ),
-              TextField(
-                controller: totalPriceController,
-                decoration: InputDecoration(labelText: 'Total Price (RM)'),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: landSizeController,
+                  decoration:
+                      InputDecoration(labelText: 'Land Size (hectares)'),
+                ),
+                TextField(
+                  controller: seedsController,
+                  decoration: InputDecoration(labelText: 'Seeds (kg)'),
+                ),
+                TextField(
+                  controller: fertilizersController,
+                  decoration:
+                      InputDecoration(labelText: 'Fertilizers (liters)'),
+                ),
+                TextField(
+                  controller: pesticidesController,
+                  decoration: InputDecoration(labelText: 'Pesticides (liters)'),
+                ),
+                TextField(
+                  controller: waterController,
+                  decoration: InputDecoration(labelText: 'Water (liters)'),
+                ),
+                TextField(
+                  controller: electricityController,
+                  decoration: InputDecoration(labelText: 'Electricity (kWh)'),
+                ),
+                TextField(
+                  controller: totalPriceController,
+                  decoration: InputDecoration(labelText: 'Total Price (RM)'),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(

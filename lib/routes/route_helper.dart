@@ -1,7 +1,7 @@
 import 'package:farm_app/screens/export_data_screen.dart';
 import 'package:farm_app/screens/home_screen.dart';
 import 'package:farm_app/screens/manage_your_farm.dart';
-import 'package:farm_app/screens/monthly_screen.dart';
+import 'package:farm_app/screens/daily_screen.dart';
 import 'package:farm_app/screens/sales_screen.dart';
 
 import 'package:farm_app/screens/sign_in_screen.dart';
@@ -26,7 +26,7 @@ class RouteHelper {
     GetPage(name: home, page: () => HomeScreen()),
     GetPage(name: farmManagment, page: () => ManageYourFarm()),
     GetPage(name: '/export-data-screen', page: () => ExportDataScreen()),
-    GetPage(name: '/monthly-updates', page: () => MonthlyUpdatesPage()),
+    GetPage(name: '/monthly-updates', page: () => DailyUpdatesPage()),
     GetPage(name: '/sales', page: () => SalesScreen()),
     // GetPage(name: landManagement, page: () => LandManagementScreen()),
     // GetPage(name: inventory, page: () => InventoryScreen()),
