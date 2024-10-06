@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:farm_app/screens/export_data_screen.dart';
+import 'package:farm_app/screens/monthly_screen.dart';
 import 'package:farm_app/screens/sales_screen.dart';
 import 'package:farm_app/utils/colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:fl_chart/fl_chart.dart'; // For graphs
@@ -21,12 +21,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic> remainingInventory = {}; // Store the remaining inventory
   Map<String, dynamic> dailyUsageData = {}; // Daily usage data for each day
   double totalWaterUsed = 0.0; // Total water used, for example
+  String userLocation = "Malaysia"; // Default location (will be updated)
+
+  // Financial fields
+  double totalIncome = 0.0; // From sales
+  double totalExpenses = 0.0; // From inventory (totalPrice)
+  double profit = 0.0; // Profit = Income - Expenses
 
   @override
   void initState() {
     super.initState();
     _loadFarmData(); // Load the farm data from Firestore for the monthly monitor
     _loadDailyUsageData(); // Load daily usage data
+    _loadSalesData(); // Load sales data for income
   }
 
   // Load farm data from Firestore (ManageYourFarm data)
@@ -37,7 +44,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (farmDoc.exists) {
       setState(() {
         monthlyUsage = farmDoc.data() as Map<String, dynamic>;
+        userLocation = farmDoc['location'] ??
+            'Malaysia'; // Get user's location from Firestore
+
+        // Calculate total expenses from the inventory (totalPrice)
+        totalExpenses = double.tryParse(
+                monthlyUsage['inventory']?['totalPrice']?.toString() ?? '0') ??
+            0.0;
+
         _calculateRemainingInventory();
+        _calculateProfit(); // Calculate the profit after loading farm data
       });
     }
   }
@@ -56,6 +72,27 @@ class _HomeScreenState extends State<HomeScreen> {
             .map((date, data) => MapEntry(date, data as Map<String, dynamic>));
         _calculateTotalUsage();
         _calculateRemainingInventory();
+      });
+    }
+  }
+
+  // Load sales data from Firestore to calculate total income
+  Future<void> _loadSalesData() async {
+    DocumentSnapshot salesDoc =
+        await FirebaseFirestore.instance.collection('sales').doc(userId).get();
+
+    if (salesDoc.exists &&
+        (salesDoc.data() as Map<String, dynamic>).containsKey('sales')) {
+      List<dynamic> sales = salesDoc['sales'] as List<dynamic>;
+
+      setState(() {
+        totalIncome = 0.0;
+        for (var sale in sales) {
+          totalIncome +=
+              double.tryParse(sale['price']?.toString() ?? '0') ?? 0.0;
+        }
+
+        _calculateProfit(); // Calculate the profit after loading sales data
       });
     }
   }
@@ -118,6 +155,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Calculate profit = income - expenses
+  void _calculateProfit() {
+    setState(() {
+      profit = totalIncome - totalExpenses;
+    });
+  }
+
   // Get the current month and year for display
   String _getCurrentMonth() {
     final DateTime now = DateTime.now();
@@ -152,6 +196,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Refresh the home page
+  void _refreshPage() {
+    setState(() {
+      _loadFarmData();
+      _loadDailyUsageData();
+      _loadSalesData();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -174,6 +227,17 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: AppColors.mainColor,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.refresh,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              _refreshPage(); // Refresh the page when button is pressed
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -193,6 +257,14 @@ class _HomeScreenState extends State<HomeScreen> {
               title: Text('Sales'),
               onTap: () {
                 Get.to(() => SalesScreen()); // Navigate to Sales Page
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.calendar_today),
+              title: Text('Monthly Updates'),
+              onTap: () {
+                Get.to(() =>
+                    MonthlyUpdatesPage()); // Navigate to Monthly Updates Page
               },
             ),
             ListTile(
@@ -222,15 +294,16 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             child: Column(
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(
                       Icons.location_pin,
                       color: Colors.white,
                       size: 20,
                     ),
+                    // Display user's city and keep "Malaysia"
                     Text(
-                      "Malaysia, Alor Setar",
+                      "Malaysia, $userLocation", // Updated to show user's location
                       style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
@@ -358,6 +431,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             "Water: ${remainingInventory['water']?.toString() ?? 'N/A'} liters left"),
                         Text(
                             "Electricity: ${monthlyUsage['inventory']?['electricity']?.toString() ?? 'N/A'} kWh"),
+                        Text(
+                            "Total Price (RM): ${monthlyUsage['inventory']?['totalPrice']?.toString() ?? 'N/A'} kWh"),
 
                         // Edit button for monthly data
                         Align(
@@ -375,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-// Daily Activity Monitor with Edit Button
+                // Daily Activity Monitor with Edit Button
                 const Text(
                   "Daily Activity Monitor",
                   style: TextStyle(color: Colors.black, fontSize: 20),
@@ -441,154 +516,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }).toList(),
 
-// Inside your widget:
-
-                const Text(
-                  "Resource Usage Over Time",
-                  style: TextStyle(color: Colors.black, fontSize: 20),
-                ),
-                // SizedBox(
-                //   height: 250,
-                //   child: LineChart(
-                //     LineChartData(
-                //       titlesData: FlTitlesData(
-                //         bottomTitles: AxisTitles(
-                //           sideTitles: SideTitles(
-                //             showTitles: true,
-                //             interval: 1,
-                //             getTitlesWidget: (value, meta) {
-                //               return Text(
-                //                 DateFormat('dd').format(DateTime.now().subtract(
-                //                     Duration(days: (30 - value.toInt())))),
-                //                 style: TextStyle(
-                //                     color: Colors.black, fontSize: 10),
-                //               );
-                //             },
-                //           ),
-                //         ),
-                //         leftTitles: AxisTitles(
-                //           sideTitles: SideTitles(
-                //             showTitles: true,
-                //             interval: 10, // Adjust based on your Y-axis range
-                //             getTitlesWidget: (value, meta) {
-                //               return Text(
-                //                 value.toString(),
-                //                 style: TextStyle(
-                //                     color: Colors.black, fontSize: 10),
-                //               );
-                //             },
-                //           ),
-                //         ),
-                //       ),
-                //       gridData: FlGridData(
-                //           show: true), // Show grid for better readability
-                //       lineBarsData: [
-                //         // Water Line
-                //         LineChartBarData(
-                //           spots: dailyUsageData.entries.map((entry) {
-                //             String date = entry.key;
-                //             double water = double.tryParse(
-                //                     entry.value['water']?.toString() ?? '0') ??
-                //                 0.0;
-                //             DateTime parsedDate = DateTime.parse(date);
-                //             return FlSpot(parsedDate.day.toDouble(), water);
-                //           }).toList(),
-                //           isCurved: false, // Straight lines (not curved)
-                //           color:
-                //               Colors.blueAccent, // Adjust the color as desired
-                //           barWidth: 2,
-                //           belowBarData: BarAreaData(
-                //               show: true,
-                //               color: Colors.blueAccent.withOpacity(0.2)),
-                //           dotData: FlDotData(
-                //               show: true), // Show dots for data points
-                //         ),
-                //         // Seeds Line
-                //         LineChartBarData(
-                //           spots: dailyUsageData.entries.map((entry) {
-                //             String date = entry.key;
-                //             double seeds = double.tryParse(
-                //                     entry.value['seeds']?.toString() ?? '0') ??
-                //                 0.0;
-                //             DateTime parsedDate = DateTime.parse(date);
-                //             return FlSpot(parsedDate.day.toDouble(), seeds);
-                //           }).toList(),
-                //           isCurved: false, // Straight lines (not curved)
-                //           color: Colors.greenAccent,
-                //           barWidth: 2,
-                //           belowBarData: BarAreaData(
-                //               show: true,
-                //               color: Colors.greenAccent.withOpacity(0.2)),
-                //           dotData: FlDotData(show: true),
-                //         ),
-                //         // Fertilizers Line
-                //         LineChartBarData(
-                //           spots: dailyUsageData.entries.map((entry) {
-                //             String date = entry.key;
-                //             double fertilizers = double.tryParse(
-                //                     entry.value['fertilizers']?.toString() ??
-                //                         '0') ??
-                //                 0.0;
-                //             DateTime parsedDate = DateTime.parse(date);
-                //             return FlSpot(
-                //                 parsedDate.day.toDouble(), fertilizers);
-                //           }).toList(),
-                //           isCurved: false,
-                //           color: Colors.orangeAccent,
-                //           barWidth: 2,
-                //           belowBarData: BarAreaData(
-                //               show: true,
-                //               color: Colors.orangeAccent.withOpacity(0.2)),
-                //           dotData: FlDotData(show: true),
-                //         ),
-                //         // Pesticides Line
-                //         LineChartBarData(
-                //           spots: dailyUsageData.entries.map((entry) {
-                //             String date = entry.key;
-                //             double pesticides = double.tryParse(
-                //                     entry.value['pesticides']?.toString() ??
-                //                         '0') ??
-                //                 0.0;
-                //             DateTime parsedDate = DateTime.parse(date);
-                //             return FlSpot(
-                //                 parsedDate.day.toDouble(), pesticides);
-                //           }).toList(),
-                //           isCurved: false,
-                //           color: Colors.redAccent,
-                //           barWidth: 2,
-                //           belowBarData: BarAreaData(
-                //               show: true,
-                //               color: Colors.redAccent.withOpacity(0.2)),
-                //           dotData: FlDotData(show: true),
-                //         ),
-                //       ],
-                //     ),
-                //   ),
-                // ),
-
-// Show remaining inventory below the chart
-                SvgPicture.asset("assets/images/1.svg"),
-                SizedBox(height: 10),
-                SvgPicture.asset("assets/images/3.svg"),
-                // Padding(
-                //   padding: const EdgeInsets.all(8.0),
-                //   child: Column(
-                //     crossAxisAlignment: CrossAxisAlignment.start,
-                //     children: [
-                //       const Text("Remaining Resources:",
-                //           style: TextStyle(
-                //               fontSize: 18, fontWeight: FontWeight.bold)),
-                //       Text(
-                //           "Seeds Left: ${remainingInventory['seeds']?.toString() ?? 'N/A'} kg"),
-                //       Text(
-                //           "Fertilizers Left: ${remainingInventory['fertilizers']?.toString() ?? 'N/A'} liters"),
-                //       Text(
-                //           "Pesticides Left: ${remainingInventory['pesticides']?.toString() ?? 'N/A'} liters"),
-                //       Text(
-                //           "Water Left: ${remainingInventory['water']?.toString() ?? 'N/A'} liters"),
-                //     ],
-                //   ),
-                // ),
+                Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Financial Overview",
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                              "Total Income: ${totalIncome.toStringAsFixed(2)} RM "),
+                          Text(
+                              "Total Expenses: ${totalExpenses.toStringAsFixed(2)} RM "),
+                          Text("Profit: ${profit.toStringAsFixed(2)} RM "),
+                        ],
+                      ),
+                    )),
               ],
             ),
           ),
@@ -777,6 +729,8 @@ class _HomeScreenState extends State<HomeScreen> {
         text: remainingInventory['water']?.toString() ?? '');
     final TextEditingController electricityController = TextEditingController(
         text: monthlyUsage['inventory']?['electricity']?.toString() ?? '');
+    final TextEditingController totalPriceController = TextEditingController(
+        text: monthlyUsage['inventory']?['totalPrice']?.toString() ?? '');
 
     showDialog(
       context: context,
@@ -810,6 +764,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: electricityController,
                 decoration: InputDecoration(labelText: 'Electricity (kWh)'),
               ),
+              TextField(
+                controller: totalPriceController,
+                decoration: InputDecoration(labelText: 'Total Price (RM)'),
+              ),
             ],
           ),
           actions: [
@@ -833,6 +791,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'inventory.pesticides': pesticidesController.text,
                   'inventory.water': waterController.text,
                   'inventory.electricity': electricityController.text,
+                  'inventory.totalPrice': totalPriceController.text,
                 });
 
                 Navigator.of(context).pop(); // Close the dialog

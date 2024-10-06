@@ -13,6 +13,10 @@ class ManageYourFarm extends StatefulWidget {
 }
 
 class _ManageYourFarmState extends State<ManageYourFarm> {
+  final TextEditingController farmNameController =
+      TextEditingController(); // New
+  final TextEditingController locationController =
+      TextEditingController(); // New
   final TextEditingController landSizeController = TextEditingController();
   final TextEditingController plugsController = TextEditingController();
   final TextEditingController seedsController = TextEditingController();
@@ -20,6 +24,8 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
   final TextEditingController pesticidesController = TextEditingController();
   final TextEditingController waterController = TextEditingController();
   final TextEditingController electricityController = TextEditingController();
+  final TextEditingController totalPriceController =
+      TextEditingController(); // New
 
   String? selectedPlantType;
   final String userId = FirebaseAuth.instance.currentUser!.uid;
@@ -38,6 +44,8 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
       var farmData = farmDoc.data() as Map<String, dynamic>;
 
       setState(() {
+        farmNameController.text = farmData['farmName'] ?? ''; // Load farmName
+        locationController.text = farmData['location'] ?? ''; // Load location
         landSizeController.text = farmData['landSize'] ?? '';
         plugsController.text = farmData['plugs']?.toString() ?? '';
         selectedPlantType = farmData['plantType'] ?? 'Aquaponic';
@@ -46,6 +54,8 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
         pesticidesController.text = farmData['inventory']['pesticides'] ?? '';
         waterController.text = farmData['inventory']['water'] ?? '';
         electricityController.text = farmData['inventory']['electricity'] ?? '';
+        totalPriceController.text =
+            farmData['inventory']['totalPrice'] ?? ''; // Load totalPrice
       });
     }
   }
@@ -71,6 +81,24 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             ],
           ),
           SizedBox(height: 40),
+          TextField(
+            controller: farmNameController,
+            decoration: InputDecoration(
+              labelText: 'Farm Name',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          SizedBox(height: 10),
+          TextField(
+            controller: locationController,
+            decoration: InputDecoration(
+              labelText: 'Location (City)',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          SizedBox(height: 10),
           TextField(
             controller: landSizeController,
             cursorColor: AppColors.mainColor,
@@ -160,6 +188,15 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
                   OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
+          SizedBox(height: 10),
+          TextField(
+            controller: totalPriceController, // New
+            decoration: InputDecoration(
+              labelText: 'Total Price (RM)',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
           SizedBox(height: 20),
           CustomButton(
             buttonText: 'Save Farm Data',
@@ -179,6 +216,8 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
       // Save the farm data in Firestore
       await FirebaseFirestore.instance.collection('farms').doc(userId).set(
         {
+          'farmName': farmNameController.text, // Save farmName
+          'location': locationController.text, // Save location
           'landSize': landSizeController.text,
           'plugs': List.generate(
               int.parse(plugsController.text), (index) => 'Plug ${index + 1}'),
@@ -189,6 +228,7 @@ class _ManageYourFarmState extends State<ManageYourFarm> {
             'pesticides': pesticidesController.text,
             'water': waterController.text,
             'electricity': electricityController.text,
+            'totalPrice': totalPriceController.text, // Save totalPrice
           },
         },
         SetOptions(merge: true),

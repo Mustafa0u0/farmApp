@@ -11,210 +11,102 @@ class MonthlyUpdatesPage extends StatefulWidget {
 }
 
 class _MonthlyUpdatesPageState extends State<MonthlyUpdatesPage> {
-  Map<String, dynamic> monthlyUpdates = {}; // Store monthly updates
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
+  Map<String, dynamic> dailyUsageData = {};
 
   @override
   void initState() {
     super.initState();
-    _loadMonthlyUpdates();
+    _loadDailyUsageData(); // Load daily usage data
   }
 
-  // Load the monthly updates from Firestore
-  Future<void> _loadMonthlyUpdates() async {
-    DocumentSnapshot farmDoc = await FirebaseFirestore.instance
-        .collection('farms')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .get();
+  // Load daily usage data from Firestore
+  Future<void> _loadDailyUsageData() async {
+    DocumentSnapshot farmDoc =
+        await FirebaseFirestore.instance.collection('farms').doc(userId).get();
 
-    if (farmDoc.exists) {
+    if (farmDoc.exists &&
+        (farmDoc.data() as Map<String, dynamic>).containsKey('daily_usage')) {
+      var dailyUsage = farmDoc['daily_usage'] as Map<String, dynamic>;
+
       setState(() {
-        monthlyUpdates = farmDoc['monthly_usage'] ?? {};
+        dailyUsageData = dailyUsage
+            .map((date, data) => MapEntry(date, data as Map<String, dynamic>));
       });
     }
-  }
-
-  // Save monthly usage data to Firestore
-  Future<void> _saveMonthlyUsage(
-    String landSize,
-    String plugs,
-    String plantType,
-    String seeds,
-    String water,
-    String fertilizers,
-    String pesticides,
-    String electricity,
-  ) async {
-    final String userId = FirebaseAuth.instance.currentUser!.uid;
-    final String month =
-        DateFormat('yyyy-MM').format(DateTime.now()); // Use current month
-
-    try {
-      // Save the monthly usage data in a similar structure as the farm data
-      await FirebaseFirestore.instance.collection('farms').doc(userId).set({
-        'monthly_usage': {
-          month: {
-            'landSize': landSize,
-            'plugs': plugs,
-            'plantType': plantType,
-            'inventory': {
-              'seeds': seeds,
-              'water': water,
-              'fertilizers': fertilizers,
-              'pesticides': pesticides,
-              'electricity': electricity,
-            }
-          }
-        }
-      }, SetOptions(merge: true)); // Use merge to avoid overwriting other data
-
-      Get.snackbar('Success', 'Monthly usage saved successfully',
-          backgroundColor: Colors.green, colorText: Colors.white);
-
-      // Reload the monthly updates to reflect the new data
-      _loadMonthlyUpdates();
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to save monthly usage',
-          backgroundColor: Colors.red, colorText: Colors.white);
-    }
-  }
-
-  // Show a form to add monthly data
-  void _showMonthlyUsageForm(BuildContext context) {
-    final TextEditingController landSizeController = TextEditingController();
-    final TextEditingController plugsController = TextEditingController();
-    final TextEditingController plantTypeController = TextEditingController();
-    final TextEditingController seedsController = TextEditingController();
-    final TextEditingController waterController = TextEditingController();
-    final TextEditingController fertilizersController = TextEditingController();
-    final TextEditingController pesticidesController = TextEditingController();
-    final TextEditingController electricityController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Add Monthly Update'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: landSizeController,
-                  decoration:
-                      InputDecoration(labelText: 'Land Size (Hectares)'),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: plugsController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Number of Plugs'),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: plantTypeController,
-                  decoration: InputDecoration(labelText: 'Plant Type'),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: seedsController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Seeds (kg)'),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: waterController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Water (Liters)'),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: fertilizersController,
-                  keyboardType: TextInputType.number,
-                  decoration:
-                      InputDecoration(labelText: 'Fertilizers (Liters)'),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: pesticidesController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Pesticides (Liters)'),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: electricityController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Electricity (kWh)'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Save'),
-              onPressed: () async {
-                // Validate and save monthly usage data
-                await _saveMonthlyUsage(
-                  landSizeController.text,
-                  plugsController.text,
-                  plantTypeController.text,
-                  seedsController.text,
-                  waterController.text,
-                  fertilizersController.text,
-                  pesticidesController.text,
-                  electricityController.text,
-                );
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Monthly Updates'),
+        title: Text('Daily Report'),
+        backgroundColor: Colors.green,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () {
+              _loadDailyUsageData(); // Refresh the data
+            },
+          ),
+        ],
       ),
       body: ListView(
-        children: monthlyUpdates.entries.map((entry) {
-          String month = entry.key;
-          Map<String, dynamic> monthData = entry.value;
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text(
+            "Daily Activity Report",
+            style: TextStyle(color: Colors.black, fontSize: 20),
+          ),
+          const SizedBox(height: 16),
+          ...dailyUsageData.entries.map((entry) {
+            String date = entry.key; // Date of the entry
+            var updates = (entry.value['updates'] as List<dynamic>? ??
+                []); // List of updates for the day
 
-          // Extract inventory data
-          Map<String, dynamic> inventory = monthData['inventory'] ?? {};
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Date: $date",
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
 
-          return ListTile(
-            title: Text('Month: $month'),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Land Size: ${monthData['landSize']} Hectares'),
-                Text('Plugs: ${monthData['plugs']}'),
-                Text('Plant Type: ${monthData['plantType']}'),
-                Text('Seeds: ${inventory['seeds']} kg'),
-                Text('Water: ${inventory['water']} L'),
-                Text('Fertilizers: ${inventory['fertilizers']} L'),
-                Text('Pesticides: ${inventory['pesticides']} L'),
-                Text('Electricity: ${inventory['electricity']} kWh'),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showMonthlyUsageForm(context);
-        },
-        child: Icon(Icons.add),
-        backgroundColor: AppColors.mainColor,
+                    // Loop through and display each update for this day
+                    ...updates.map((update) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Plug: ${update['plug'] ?? 'N/A'}"),
+                            Text(
+                                "Vegetable/Fruit: ${update['vegFruit'] ?? 'N/A'}"),
+                            Text(
+                                "Seeds: ${update['seeds']?.toString() ?? 'N/A'} grams"),
+                            Text(
+                                "Fertilizers: ${update['fertilizers']?.toString() ?? 'N/A'} liters"),
+                            Text(
+                                "Pesticides: ${update['pesticides']?.toString() ?? 'N/A'} liters"),
+                            Text(
+                                "Water: ${update['water']?.toString() ?? 'N/A'} liters"),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }
