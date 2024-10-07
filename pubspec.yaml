@@ -50,6 +50,7 @@ dependencies:
   firebase_storage: ^12.3.2
   share_plus: ^10.0.2
   syncfusion_flutter_charts: ^27.1.51
+  open_file: ^3.5.8
 
 dev_dependencies:
   flutter_test:

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart'; // For requesting permissions
+import 'package:open_file/open_file.dart'; // For opening the file
 
 class ExportDataScreen extends StatefulWidget {
   @override
@@ -119,9 +120,9 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
       // Generate CSV
       String csv = const ListToCsvConverter().convert(csvData);
 
-      // Save CSV file locally
-      final directory = await getExternalStorageDirectory();
-      final path = '${directory!.path}/farm_data.csv';
+      // Save CSV file locally in the Downloads directory
+      final directory = Directory('/storage/emulated/0/Download');
+      final path = '${directory.path}/farm_data.csv';
       final file = File(path);
       await file.writeAsString(csv);
 
@@ -129,6 +130,14 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
         csvFilePath = path; // Store the file path to display it
         isLoading = false;
       });
+
+      // Show a message when the file is saved and open it automatically
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('File saved at $path')),
+      );
+
+      // Open the saved file
+      await OpenFile.open(path);
     } catch (e) {
       setState(() {
         isLoading = false;
