@@ -137,99 +137,101 @@ class _SalesScreenState extends State<SalesScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Add a Sale',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: productNameController,
-              decoration: InputDecoration(
-                labelText: 'Product Name',
-                border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Text(
+                'Add a Sale',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: gramsController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Grams',
-                border: OutlineInputBorder(),
+              SizedBox(height: 16),
+              TextField(
+                controller: productNameController,
+                decoration: InputDecoration(
+                  labelText: 'Product Name',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Price (Ringgit)',
-                border: OutlineInputBorder(),
+              SizedBox(height: 16),
+              TextField(
+                controller: gramsController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Grams',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                if (productNameController.text.isNotEmpty &&
-                    gramsController.text.isNotEmpty &&
-                    priceController.text.isNotEmpty) {
-                  await _saveSale(
-                    productNameController.text,
-                    gramsController.text,
-                    priceController.text,
-                  );
+              SizedBox(height: 16),
+              TextField(
+                controller: priceController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Price (Ringgit)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  if (productNameController.text.isNotEmpty &&
+                      gramsController.text.isNotEmpty &&
+                      priceController.text.isNotEmpty) {
+                    await _saveSale(
+                      productNameController.text,
+                      gramsController.text,
+                      priceController.text,
+                    );
 
-                  // Clear the fields after saving
-                  productNameController.clear();
-                  gramsController.clear();
-                  priceController.clear();
-                } else {
-                  Get.snackbar('Error', 'Please fill in all fields',
-                      backgroundColor: Colors.red, colorText: Colors.white);
-                }
-              },
-              child: Text('Add Sale'),
-            ),
-            SizedBox(height: 32),
-            Text(
-              'Total Sales: RM $totalSales',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: sales.length,
-                itemBuilder: (context, index) {
-                  var sale = sales[index];
-                  return ListTile(
-                    title: Text('${sale['productName']}'),
-                    subtitle: Text(
-                        'Grams: ${sale['grams']}g, Price: RM${sale['price']}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.edit),
-                          onPressed: () {
-                            _showEditSaleDialog(
-                                context, index, sale); // Show edit dialog
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () {
-                            _deleteSale(index); // Delete the sale
-                          },
-                        ),
-                      ],
-                    ),
-                  );
+                    // Clear the fields after saving
+                    productNameController.clear();
+                    gramsController.clear();
+                    priceController.clear();
+                  } else {
+                    Get.snackbar('Error', 'Please fill in all fields',
+                        backgroundColor: Colors.red, colorText: Colors.white);
+                  }
                 },
+                child: Text('Add Sale'),
               ),
-            ),
-          ],
+              SizedBox(height: 32),
+              Text(
+                'Total Sales: RM $totalSales',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: sales.length,
+                  itemBuilder: (context, index) {
+                    var sale = sales[index];
+                    return ListTile(
+                      title: Text('${sale['productName']}'),
+                      subtitle: Text(
+                          'Grams: ${sale['grams']}g, Price: RM${sale['price']}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: () {
+                              _showEditSaleDialog(
+                                  context, index, sale); // Show edit dialog
+                            },
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete),
+                            onPressed: () {
+                              _deleteSale(index); // Delete the sale
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

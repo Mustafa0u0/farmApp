@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:csv/csv.dart';
+import 'package:farm_app/utils/colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,7 +23,7 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
       appBar: AppBar(
         title: const Text('Export Data'),
         centerTitle: true,
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.mainColor,
       ),
       body: Center(
         child: isLoading

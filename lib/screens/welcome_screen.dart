@@ -77,12 +77,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                   SizedBox(height: 10), // Space between the two Text widgets
 
-                  CustomButton(
-                    buttonText: "Continue with Google",
-                    textColor: Colors.black,
-                    onPressed: () {},
-                    child: SvgPicture.asset("assets/icons/google.svg"),
-                  ),
+                  // CustomButton(
+                  //   buttonText: "Continue with Google",
+                  //   textColor: Colors.black,
+                  //   onPressed: () {},
+                  //   child: SvgPicture.asset("assets/icons/google.svg"),
+                  // ),
                 ]))
           ],
         ));

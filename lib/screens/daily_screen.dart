@@ -4,6 +4,9 @@ import 'package:farm_app/utils/colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // Firebase Storage for image upload
+import 'package:image_picker/image_picker.dart'; // Image Picker
+import 'dart:io'; // For File handling
 
 class DailyUpdatesPage extends StatefulWidget {
   @override
@@ -13,6 +16,8 @@ class DailyUpdatesPage extends StatefulWidget {
 class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
   final String userId = FirebaseAuth.instance.currentUser!.uid;
   Map<String, dynamic> dailyUsageData = {};
+  File? _selectedImage; // For storing the selected image
+  final picker = ImagePicker(); // For image picking
 
   @override
   void initState() {
@@ -40,7 +45,10 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Daily Report'),
+        title: Text(
+          'Daily Report',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: AppColors.mainColor,
         actions: [
           IconButton(
@@ -54,16 +62,11 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
           ),
         ],
       ),
-      // Floating Action Button to add daily farm usage
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Show a form to enter daily farm usage
           _showDailyUsageForm(context);
         },
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
+        child: const Icon(Icons.add, color: Colors.white),
         backgroundColor: AppColors.mainColor,
       ),
       body: ListView(
@@ -93,8 +96,6 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
                     Text("Date: $date",
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-
-                    // Loop through and display each update for this day
                     ...updates.map((update) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -112,11 +113,19 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
                                 "Pesticides: ${update['pesticides']?.toString() ?? 'N/A'} liters"),
                             Text(
                                 "Water: ${update['water']?.toString() ?? 'N/A'} liters"),
+                            if (update.containsKey('imageUrl'))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Image.network(
+                                  update['imageUrl'],
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                           ],
                         ),
                       );
                     }).toList(),
-                    // Edit button for daily data
                     Align(
                       alignment: Alignment.centerRight,
                       child: IconButton(
@@ -137,19 +146,39 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
     );
   }
 
+  // Image picker function
+  Future<void> _pickImage() async {
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    setState(() {
+      _selectedImage = pickedFile != null ? File(pickedFile.path) : null;
+    });
+  }
+
+  // Upload image to Firebase Storage and get the URL
+  Future<String?> _uploadImage(File image) async {
+    try {
+      String fileName = DateTime.now().millisecondsSinceEpoch.toString();
+      Reference storageRef =
+          FirebaseStorage.instance.ref().child("daily_images/$fileName");
+      UploadTask uploadTask = storageRef.putFile(image);
+      TaskSnapshot snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
   void _showDailyUsageForm(BuildContext context) async {
-    // Fetch plugs from Firestore
     DocumentSnapshot farmDoc =
         await FirebaseFirestore.instance.collection('farms').doc(userId).get();
     List<String> plugs = (farmDoc['plugs'] as List<dynamic>).cast<String>();
 
-    // Controllers for text fields
     final TextEditingController seedsController = TextEditingController();
     final TextEditingController waterController = TextEditingController();
     final TextEditingController fertilizersController = TextEditingController();
     final TextEditingController pesticidesController = TextEditingController();
-    final TextEditingController vegFruitController =
-        TextEditingController(); // For vegetable/fruit name
+    final TextEditingController vegFruitController = TextEditingController();
     String? selectedPlug;
 
     showDialog(
@@ -161,7 +190,6 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Dropdown for selecting the plug
                 DropdownButtonFormField<String>(
                   value: selectedPlug,
                   items: plugs.map((String plug) {
@@ -198,6 +226,16 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(labelText: 'Pesticides (liters)'),
                 ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: _pickImage,
+                  child: const Text("Upload Image"),
+                ),
+                if (_selectedImage != null)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Image.file(_selectedImage!, height: 200),
+                  ),
               ],
             ),
           ),
@@ -211,7 +249,6 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
             TextButton(
               child: Text('Save'),
               onPressed: () async {
-                // Validate input and save to Firestore
                 await _saveDailyUsage(
                   selectedPlug!,
                   vegFruitController.text,
@@ -239,27 +276,28 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
   ) async {
     final String userId = FirebaseAuth.instance.currentUser!.uid;
     final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    String? imageUrl;
+
+    if (_selectedImage != null) {
+      imageUrl = await _uploadImage(_selectedImage!); // Upload the image
+    }
 
     try {
-      // Retrieve existing daily usage data for today, if any
       DocumentSnapshot farmDoc = await FirebaseFirestore.instance
           .collection('farms')
           .doc(userId)
           .get();
-      List<dynamic> existingUpdates =
-          []; // Default to empty list if no data exists
+      List<dynamic> existingUpdates = [];
 
       if (farmDoc.exists &&
           (farmDoc.data() as Map<String, dynamic>).containsKey('daily_usage')) {
         var dailyUsageData = (farmDoc['daily_usage'] as Map<String, dynamic>);
         if (dailyUsageData.containsKey(today)) {
           existingUpdates =
-              dailyUsageData[today]['updates'] as List<dynamic>? ??
-                  []; // Ensure it's a list or empty
+              dailyUsageData[today]['updates'] as List<dynamic>? ?? [];
         }
       }
 
-      // Add the new daily update to the existing updates
       existingUpdates.add({
         'plug': plug,
         'vegFruit': vegFruit,
@@ -267,27 +305,24 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
         'water': water,
         'fertilizers': fertilizers,
         'pesticides': pesticides,
+        if (imageUrl != null) 'imageUrl': imageUrl, // Add image URL if present
       });
 
-      // Save the updated daily usage data back to Firestore
       await FirebaseFirestore.instance.collection('farms').doc(userId).set(
         {
           'daily_usage': {
             today: {
-              'updates': existingUpdates, // Store the array of updates
+              'updates': existingUpdates,
             }
           }
         },
-        SetOptions(
-            merge:
-                true), // Merge the data instead of overwriting the entire document
+        SetOptions(merge: true),
       );
 
       Get.snackbar('Success', 'Daily usage saved successfully',
           backgroundColor: Colors.green, colorText: Colors.white);
 
-      // Reload data to refresh the UI
-      _loadDailyUsageData();
+      _loadDailyUsageData(); // Reload the data
     } catch (e) {
       Get.snackbar('Error', 'Failed to save daily usage',
           backgroundColor: Colors.red, colorText: Colors.white);
@@ -303,11 +338,13 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
 
     // Create controllers for each field and populate with existing data
     final List<TextEditingController> vegFruitControllers = [];
-    final List<String?> selectedPlugList = []; // List for selected plugs
+    final List<String?> selectedPlugList = [];
     final List<TextEditingController> seedControllers = [];
     final List<TextEditingController> waterControllers = [];
     final List<TextEditingController> fertilizerControllers = [];
     final List<TextEditingController> pesticideControllers = [];
+    final List<File?> updatedImages = [];
+    final picker = ImagePicker(); // For picking the image
 
     for (var update in updates) {
       vegFruitControllers.add(
@@ -321,6 +358,17 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
           TextEditingController(text: update['fertilizers']?.toString() ?? ''));
       pesticideControllers.add(
           TextEditingController(text: update['pesticides']?.toString() ?? ''));
+      updatedImages.add(null); // Placeholder for updated images
+    }
+
+    // Function to pick and update images
+    Future<void> _pickUpdatedImage(int index) async {
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          updatedImages[index] = File(pickedFile.path);
+        });
+      }
     }
 
     showDialog(
@@ -336,8 +384,6 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text("Update ${index + 1}"),
-
-                    // Dropdown to select a plug
                     DropdownButtonFormField<String>(
                       value: selectedPlugList[index],
                       items: plugs.map((String plug) {
@@ -348,14 +394,11 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
                       },
                       decoration: InputDecoration(labelText: 'Select Plug'),
                     ),
-
-                    // Text field to edit vegetable/fruit name
                     TextField(
                       controller: vegFruitControllers[index],
                       decoration:
                           InputDecoration(labelText: 'Vegetable/Fruit Name'),
                     ),
-
                     TextField(
                       controller: seedControllers[index],
                       decoration: InputDecoration(labelText: 'Seeds (grams)'),
@@ -374,6 +417,28 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
                       decoration:
                           InputDecoration(labelText: 'Pesticides (liters)'),
                     ),
+                    // Display existing image if available
+                    if (updates[index].containsKey('imageUrl'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Image.network(
+                          updates[index]['imageUrl'],
+                          height: 200,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    // Button to select a new image
+                    ElevatedButton(
+                      onPressed: () {
+                        _pickUpdatedImage(index);
+                      },
+                      child: const Text("Change Image"),
+                    ),
+                    if (updatedImages[index] != null)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Image.file(updatedImages[index]!, height: 200),
+                      ),
                     const Divider(),
                   ],
                 );
@@ -390,21 +455,27 @@ class _DailyUpdatesPageState extends State<DailyUpdatesPage> {
             TextButton(
               child: Text('Save'),
               onPressed: () async {
-                // Build the updated list of updates
                 List<Map<String, dynamic>> updatedDailyData = [];
                 for (int i = 0; i < updates.length; i++) {
+                  String? imageUrl = updates[i]['imageUrl'];
+
+                  // If a new image is selected, upload and get the new URL
+                  if (updatedImages[i] != null) {
+                    imageUrl = await _uploadImage(updatedImages[i]!);
+                  }
+
                   updatedDailyData.add({
-                    'plug': selectedPlugList[i], // Store the selected plug
-                    'vegFruit': vegFruitControllers[i]
-                        .text, // Store the edited vegetable/fruit name
+                    'plug': selectedPlugList[i],
+                    'vegFruit': vegFruitControllers[i].text,
                     'seeds': seedControllers[i].text,
                     'water': waterControllers[i].text,
                     'fertilizers': fertilizerControllers[i].text,
                     'pesticides': pesticideControllers[i].text,
+                    if (imageUrl != null)
+                      'imageUrl': imageUrl, // Update the image
                   });
                 }
 
-                // Update Firestore with the new daily data
                 await FirebaseFirestore.instance
                     .collection('farms')
                     .doc(userId)
